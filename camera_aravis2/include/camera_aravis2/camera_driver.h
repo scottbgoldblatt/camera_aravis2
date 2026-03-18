@@ -60,6 +60,8 @@ extern "C"
 #include "camera_aravis2/image_buffer_pool.h"
 #include <camera_aravis2_msgs/msg/camera_diagnostics.hpp>
 #include <camera_aravis2_msgs/srv/calculate_white_balance.hpp>
+#include <camera_aravis2_msgs/msg/frame_meta.hpp>
+
 
 namespace camera_aravis2
 {
@@ -78,9 +80,6 @@ class CameraDriver : public CameraAravisNodeBase
      */
     struct Stream
     {
-        /**
-         * @brief Default constructor
-         */
         Stream() :
           p_arv_stream(nullptr),
           p_buffer_pool(ImageBufferPool::SharedPtr()),
@@ -93,49 +92,52 @@ class CameraDriver : public CameraAravisNodeBase
           is_buffer_processed(false)
         {
         }
-
+    
         /// Pointer to aravis stream.
         ArvStream* p_arv_stream;
-
+    
         /// Shared pointer to buffer pool.
         ImageBufferPool::SharedPtr p_buffer_pool;
-
+    
         /// Name of stream.
         std::string name;
-
+    
         /// Sensor associated with the stream.
         Sensor sensor;
-
+    
         /// Image region associated with the stream.
         ImageRoi image_roi;
-
+    
         /// Control settings for image acquisition.
         AcquisitionControl acquisition_control;
-
+    
         /// Control settings for analog control.
         AnalogControl analog_control;
-
+    
         /// URL to camera info yaml file.
         std::string camera_info_url;
-
+    
         /// Conversion function to convert pixel format from sensor into image message.
         ConversionFunction cvt_pixel_format;
-
+    
         /// Camera publisher.
         image_transport::CameraPublisher camera_pub;
-
+    
+        /// Frame metadata publisher.
+        rclcpp::Publisher<camera_aravis2_msgs::msg::FrameMeta>::SharedPtr frame_meta_pub;
+    
         /// Unique pointer to camera info manager.
         std::unique_ptr<camera_info_manager::CameraInfoManager> p_camera_info_manager;
-
+    
         /// Pointer to camera_info message.
         sensor_msgs::msg::CameraInfo::SharedPtr p_cam_info_msg;
-
+    
         /// Flag controlling processing of buffer data.
         bool is_buffer_processed;
-
+    
         /// Thread to process ready stream buffer.
         std::thread buffer_processing_thread;
-
+    
         /// Concurrent queue holding the buffer data to be processed in a separate thread.
         ConcurrentQueue<std::pair<ArvBuffer*, sensor_msgs::msg::Image::SharedPtr>>
           buffer_queue;
