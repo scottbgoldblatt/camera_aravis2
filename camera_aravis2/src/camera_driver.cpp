@@ -282,6 +282,22 @@ bool CameraDriver::setupCameraStreamStructs()
     return true;
 }
 
+
+//==================================================================================================
+void CameraDriver::fillFrameMetaMsg(camera_aravis2_msgs::msg::FrameMeta& meta_msg,
+                                    const sensor_msgs::msg::Image::SharedPtr& p_img_msg,
+                                    ArvBuffer* p_buffer) const
+{
+    meta_msg.header = p_img_msg->header;
+    meta_msg.frame_id_counter =
+      static_cast<uint64_t>(arv_buffer_get_frame_id(p_buffer));
+    meta_msg.camera_timestamp_ns =
+      static_cast<uint64_t>(arv_buffer_get_timestamp(p_buffer));
+    meta_msg.system_timestamp_ns =
+      static_cast<uint64_t>(arv_buffer_get_system_timestamp(p_buffer));
+    meta_msg.buffer_status =
+      static_cast<uint8_t>(arv_buffer_get_status(p_buffer));
+}
 //==================================================================================================
 void CameraDriver::filterParameterListNames(
   std::vector<std::pair<std::string, rclcpp::ParameterValue>>& parameter_list)
@@ -1764,7 +1780,6 @@ void CameraDriver::spawnCameraStreams()
     this->is_initialized_ = true;
 }
 
-//==================================================================================================
 void CameraDriver::processStreamBuffer(const uint stream_id)
 {
     using namespace std::chrono_literals;
@@ -1781,7 +1796,7 @@ void CameraDriver::processStreamBuffer(const uint stream_id)
         stream.buffer_queue.pop(buffer_img_pair);
 
         //--- take ownership of pointers
-        ArvBuffer* p_arv_buffer                      = std::get<0>(buffer_img_pair);
+        ArvBuffer* p_arv_buffer = std::get<0>(buffer_img_pair);
         sensor_msgs::msg::Image::SharedPtr p_img_msg = std::get<1>(buffer_img_pair);
         if (!p_arv_buffer || !p_img_msg)
             continue;
@@ -1800,20 +1815,32 @@ void CameraDriver::processStreamBuffer(const uint stream_id)
         //--- set meta data of image message
         fillImageMsgMetadata(p_img_msg, p_arv_buffer, stream.sensor, stream.image_roi);
 
+        //--- build metadata message using the same header chosen above
+        camera_aravis2_msgs::msg::FrameMeta frame_meta_msg;
+        fillFrameMetaMsg(frame_meta_msg, p_img_msg, p_arv_buffer);
+
         //--- convert to ros format
         if (stream.cvt_pixel_format)
         {
             sensor_msgs::msg::Image::SharedPtr p_cvt_img_msg =
               stream.p_buffer_pool->getRecyclableImg();
             stream.cvt_pixel_format(p_img_msg, p_cvt_img_msg);
+
+            // preserve header set by fillImageMsgMetadata()
+            p_cvt_img_msg->header = p_img_msg->header;
+
             p_img_msg = p_cvt_img_msg;
         }
 
         //--- fill camera_info message
         fillCameraInfoMsg(stream, p_img_msg);
 
-        //--- publish
+        //--- publish image + camera_info
         stream.camera_pub.publish(p_img_msg, stream.p_cam_info_msg);
+
+        //--- publish frame metadata
+        if (stream.frame_meta_pub)
+            stream.frame_meta_pub->publish(frame_meta_msg);
 
         //--- do post frame processing
         postFrameProcessingCallback(stream_id);
