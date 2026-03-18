@@ -1,0 +1,5 @@
+std_msgs/Header header
+uint64 frame_id_counter
+uint64 camera_timestamp_ns
+uint64 system_timestamp_ns
+uint8 buffer_status
