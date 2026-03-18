@@ -31,6 +31,7 @@
 // ROS
 #include <rcl_interfaces/msg/floating_point_range.hpp>
 #include <rcl_interfaces/msg/integer_range.hpp>
+#include <camera_aravis2_msgs/msg/frame_meta.hpp>
 #include <rclcpp/time.hpp>
 
 /// Conversions from integers to Arv types.
@@ -243,6 +244,14 @@ bool CameraDriver::setupCameraStreamStructs()
 
 #ifndef WITH_MATCHED_EVENTS
         stream.camera_pub = image_transport::create_camera_publisher(this, topic_name);
+              //--- create frame metadata publisher
+        std::string meta_topic_name = this->get_name();
+        if (!stream_names.empty() || num_streams > 1)
+            meta_topic_name += "/" + stream.name;
+        meta_topic_name += "/frame_meta";
+
+        stream.frame_meta_pub =
+          this->create_publisher<camera_aravis2_msgs::msg::FrameMeta>(meta_topic_name, 10);
 #else
         rclcpp::PublisherOptions pub_options;
         pub_options.event_callbacks.matched_callback =
