@@ -486,6 +486,11 @@ class CameraDriver : public CameraAravisNodeBase
     void fillCameraInfoMsg(CameraDriver::Stream& stream,
                            const sensor_msgs::msg::Image::SharedPtr& p_img_msg) const;
 
+
+    void fillFrameMetaMsg(
+    camera_aravis2_msgs::msg::FrameMeta& meta_msg,
+    const sensor_msgs::msg::Image::SharedPtr& img_msg,
+    ArvBuffer* buffer) const;
     /**
      * @brief Pure virtual callback method to inject short processing routines after the
      * publication of each frame.
