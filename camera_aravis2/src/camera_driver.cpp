@@ -243,23 +243,33 @@ bool CameraDriver::setupCameraStreamStructs()
         topic_name += "/image_raw";
 
 #ifndef WITH_MATCHED_EVENTS
-        stream.camera_pub = image_transport::create_camera_publisher(this, topic_name);
-              //--- create frame metadata publisher
-        std::string meta_topic_name = topic_name;
-        meta_topic_name.replace(meta_topic_name.find("image_raw"), 9, "frame_meta");
-
-        stream.frame_meta_pub =
-          this->create_publisher<camera_aravis2_msgs::msg::FrameMeta>(meta_topic_name, 10);
+    stream.camera_pub =
+        image_transport::create_camera_publisher(this, topic_name);
 #else
-        rclcpp::PublisherOptions pub_options;
-        pub_options.event_callbacks.matched_callback =
-          std::bind(&CameraDriver::handleMessageSubscriptionChange, this,
-                    std::placeholders::_1);
-        stream.camera_pub =
-          image_transport::create_camera_publisher(this, topic_name,
-                                                   rmw_qos_profile_default, pub_options);
-#endif
+    rclcpp::PublisherOptions pub_options;
+    pub_options.event_callbacks.matched_callback =
+        std::bind(&CameraDriver::handleMessageSubscriptionChange, this,
+                  std::placeholders::_1);
 
+    stream.camera_pub =
+        image_transport::create_camera_publisher(this, topic_name,
+                                                 rmw_qos_profile_default, pub_options);
+#endif
+        
+        // --- create frame metadata publisher (ALWAYS)
+        std::string meta_topic_name = topic_name;
+        
+        auto pos = meta_topic_name.find("image_raw");
+        if (pos != std::string::npos) {
+            meta_topic_name.replace(pos, 9, "frame_meta");
+        } else {
+            meta_topic_name += "/frame_meta";
+        }
+        
+        stream.frame_meta_pub =
+            this->create_publisher<camera_aravis2_msgs::msg::FrameMeta>(meta_topic_name, 10);
+
+      
         //--- initialize camera_info manager
         // NOTE: Previously, separate node handles where used for CameraInfoManagers in case of a
         // Multi-source Camera. Uncertain if this is still relevant.
